@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "only.in.ohio.mixin",
+	"compatibilityLevel": "JAVA_16",
+	"mixins": [
+		"ExampleMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
