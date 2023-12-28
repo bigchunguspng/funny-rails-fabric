@@ -27,6 +27,8 @@ public class SwitchRailBlock extends AbstractRailBlock
         this.setDefaultState(this.stateManager.getDefaultState().with(SHAPE, RailShape.NORTH_SOUTH).with(FACING, Direction.UP));
     }
 
+    // PLACEMENT LOGIC
+
     public BlockState getPlacementState(ItemPlacementContext ctx)
     {
         var playerFacing = ctx.getPlayerFacing();
@@ -61,10 +63,11 @@ public class SwitchRailBlock extends AbstractRailBlock
         }
     }
 
-    public Property<RailShape> getShapeProperty()
-    {
-        return SHAPE;
-    }
+    // INTERACTION LOGIC
+
+
+
+    // REAL TRAP SHIT
 
     public BlockState rotate(BlockState state, BlockRotation rotation)
     {
@@ -140,6 +143,11 @@ public class SwitchRailBlock extends AbstractRailBlock
             default -> super.mirror(state, mirror);
         };
 
+    }
+
+    public Property<RailShape> getShapeProperty()
+    {
+        return SHAPE;
     }
 
     protected void appendProperties(StateManager.Builder<Block, BlockState> builder)
