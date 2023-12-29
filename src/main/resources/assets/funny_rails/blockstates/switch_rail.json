@@ -1,0 +1,25 @@
+{
+  "variants": {
+    "shape=east_west,facing=up": {
+      "model": "funny_rails:block/switch_rail",
+      "y": 90
+    },
+    "shape=north_south,facing=up": {
+      "model": "funny_rails:block/switch_rail"
+    },
+    "shape=east_west,facing=east": {
+      "model": "funny_rails:block/switch_rail_one_way",
+      "y": 90
+    },
+    "shape=east_west,facing=west": {
+      "model": "funny_rails:block/switch_rail_other_way",
+      "y": 90
+    },
+    "shape=north_south,facing=north": {
+      "model": "funny_rails:block/switch_rail_one_way"
+    },
+    "shape=north_south,facing=south": {
+      "model": "funny_rails:block/switch_rail_other_way"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/rail_flat",
+  "textures": {
+    "rail": "funny_rails:block/switch_rail_other_way"
+  }
+}

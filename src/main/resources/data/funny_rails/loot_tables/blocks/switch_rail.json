@@ -6,7 +6,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "railway_switch:switch_rail"
+          "name": "funny_rails:switch_rail"
         }
       ],
       "conditions": [

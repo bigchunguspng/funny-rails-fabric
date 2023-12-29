@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "railway_switch:block/switch_rail"
+    "layer0": "funny_rails:block/switch_rail"
   }
 }

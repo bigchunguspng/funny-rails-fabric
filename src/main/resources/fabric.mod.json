@@ -1,18 +1,17 @@
 {
 	"schemaVersion": 1,
-	"id": "railway_switch",
+	"id": "funny_rails",
 	"version": "${version}",
-	"name": "railway_switch",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Le Funny Rails :)",
+	"description": "This is a certified hood classic! *BOOM*!",
 	"authors": [
-		"Me!"
+		"Big Chungus!"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/bigchunguspng/funny-rails-fabric"
 	},
-	"license": "CC0-1.0",
-	"icon": "assets/railway_switch/icon.png",
+	"license": "MIT",
+	"icon": "assets/funny_rails/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
@@ -23,7 +22,7 @@
 		]
 	},
 	"mixins": [
-		"railway_switch.mixins.json"
+		"funny_rails.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.15.3",

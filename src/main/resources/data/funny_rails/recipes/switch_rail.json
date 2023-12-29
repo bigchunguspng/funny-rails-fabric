@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "XSX",
+    "X#X",
+    "XSX"
+  ],
+  "key": {
+    "#": {
+      "item": "minecraft:light_weighted_pressure_plate"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "result": {
+    "item": "funny_rails:switch_rail",
+    "count": 6
+  }
+}

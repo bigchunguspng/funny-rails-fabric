@@ -8,12 +8,12 @@ import org.apache.logging.log4j.Logger;
 
 public class Mod implements ModInitializer
 {
-	public static final String MOD_ID = "railway_switch";
+    public static final String MOD_ID = "funny_rails";
 
     // This logger is used to write text to the console and the log file.
     // It is considered best practice to use your mod id as the logger's name.
     // That way, it's clear which mod wrote info, warnings, and errors.
-    public static final Logger LOGGER = LogManager.getLogger("railway_switch");
+    public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
     @Override
     public void onInitialize()
