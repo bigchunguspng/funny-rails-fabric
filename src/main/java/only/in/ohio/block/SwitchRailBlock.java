@@ -5,6 +5,8 @@ import net.minecraft.block.enums.RailShape;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.item.ItemPlacementContext;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.EnumProperty;
@@ -13,6 +15,7 @@ import net.minecraft.state.property.Property;
 import net.minecraft.tag.BlockTags;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
@@ -100,9 +103,17 @@ public class SwitchRailBlock extends AbstractRailBlock
 
             var shape = getNewRailShape(world, ahead, direction, passenger.getHeadYaw());
 
-            world.setBlockState(ahead, next.with(Properties.RAIL_SHAPE, shape), 3);
+            var nextUpdated = next.with(Properties.RAIL_SHAPE, shape);
+            if (nextUpdated != next)
+            {
+                world.setBlockState(ahead, nextUpdated, 3);
+                world.playSound(null, ahead, SOUND, SoundCategory.BLOCKS, 0.5f, 2.0f);
+            }
+            world.playSound(null, pos, SOUND, SoundCategory.BLOCKS, 0.05f, 0.75f);
         }
     }
+
+    private static final SoundEvent SOUND = new SoundEvent(new Identifier("block.grindstone.use"));
 
     private static boolean isOneWaySwitch(BlockState rail)
     {
