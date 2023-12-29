@@ -20,6 +20,7 @@ import net.minecraft.world.World;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Objects;
 
 public class SwitchRailBlock extends AbstractRailBlock
@@ -29,7 +30,7 @@ public class SwitchRailBlock extends AbstractRailBlock
 
     protected SwitchRailBlock(AbstractBlock.Settings settings)
     {
-        super(true, settings);
+        super(true, settings); // note: "allowCurves" parameter in fact DISABLES curves
         this.setDefaultState(this.stateManager.getDefaultState().with(SHAPE, RailShape.NORTH_SOUTH).with(FACING, Direction.UP));
     }
 
@@ -38,8 +39,7 @@ public class SwitchRailBlock extends AbstractRailBlock
     public BlockState getPlacementState(ItemPlacementContext ctx)
     {
         var playerFacing = ctx.getPlayerFacing();
-        var ew = playerFacing == Direction.EAST || playerFacing == Direction.WEST;
-        var shape = ew ? RailShape.EAST_WEST : RailShape.NORTH_SOUTH;
+        var shape = isEastOrWest(playerFacing) ? RailShape.EAST_WEST : RailShape.NORTH_SOUTH;
         var facing = Objects.requireNonNull(ctx.getPlayer()).isSneaking() ? playerFacing : Direction.UP;
         return super.getDefaultState().with(SHAPE, shape).with(FACING, facing);
     }
@@ -48,6 +48,7 @@ public class SwitchRailBlock extends AbstractRailBlock
     {
         FixSwitchRailFacing(world, pos, state);
 
+        // idk what the code below does and when it's called
         if (neighbor.getDefaultState().emitsRedstonePower() && (new RailPlacementHelper(world, pos, state)).getNeighbors().size() == 3)
         {
             this.updateBlockState(world, pos, state, false);
@@ -62,8 +63,8 @@ public class SwitchRailBlock extends AbstractRailBlock
             if (facing == Direction.UP) return;
 
             var shape = state.get(SHAPE);
-            if (shape == RailShape.EAST_WEST && (facing == Direction.EAST || facing == Direction.WEST)) return;
-            if (shape == RailShape.NORTH_SOUTH && (facing == Direction.NORTH || facing == Direction.SOUTH)) return;
+            if (shape == RailShape.EAST_WEST && isEastOrWest(facing)) return;
+            if (shape == RailShape.NORTH_SOUTH && isNorthOrSouth(facing)) return;
 
             world.setBlockState(pos, state.with(FACING, Direction.UP), 3);
         }
@@ -75,7 +76,6 @@ public class SwitchRailBlock extends AbstractRailBlock
     {
         if (world.isClient) return;
 
-        //System.out.println("onEntityCollision");
         if (entity.getType() != EntityType.MINECART) return;
 
         var passengers = entity.getPassengerList();
@@ -83,46 +83,30 @@ public class SwitchRailBlock extends AbstractRailBlock
 
         var passenger = passengers.get(0);
 
-        var rails = world.getBlockState(pos);
-
-        var isTwoWay = /*        */ isTwoWaySwitch(rails);
-        var isOneWay = !isTwoWay && isOneWaySwitch(rails);
-
-        if (isTwoWay || isOneWay)
+        var rail = world.getBlockState(pos);
+        if (rail.getBlock() instanceof SwitchRailBlock)
         {
             var direction = getCartDirection(entity.getVelocity());
 
             // one-way switch can only shape rails in front of it
-            if (isOneWay && getOneWaySwitchDirection(rails) == direction.getOpposite()) return;
+            if (isOneWaySwitch(rail) && rail.get(FACING) == direction.getOpposite()) return;
 
-            var pos2 = pos.offset(direction);
-            var next = world.getBlockState(pos2);
+            var ahead = pos.offset(direction);
+            var next = world.getBlockState(ahead);
             if (next.getBlock() != Blocks.RAIL) return;
 
             // ascending tracks can't be switched
             if (RailIsAscending(next)) return;
 
-            var yaw = passenger.getHeadYaw();
-            System.out.println("pos2: " + pos2 + ", cart going " + direction);
-            var shape = getRailShape(world, pos2, direction, yaw);
+            var shape = getNewRailShape(world, ahead, direction, passenger.getHeadYaw());
 
-            world.setBlockState(pos2, next.with(Properties.RAIL_SHAPE, shape), 3);
+            world.setBlockState(ahead, next.with(Properties.RAIL_SHAPE, shape), 3);
         }
-    }
-
-    private static boolean isTwoWaySwitch(BlockState rail)
-    {
-        return rail.get(FACING) == Direction.UP;
     }
 
     private static boolean isOneWaySwitch(BlockState rail)
     {
         return rail.get(FACING) != Direction.UP;
-    }
-
-    private static Direction getOneWaySwitchDirection(BlockState rail)
-    {
-        return rail.get(FACING);
     }
 
     private static Direction getCartDirection(Vec3d speed)
@@ -139,7 +123,7 @@ public class SwitchRailBlock extends AbstractRailBlock
         return s == RailShape.ASCENDING_EAST || s == RailShape.ASCENDING_WEST || s == RailShape.ASCENDING_NORTH || s == RailShape.ASCENDING_SOUTH;
     }
 
-    private static RailShape getRailShape(World world, BlockPos pos, Direction minecartDirection, float passengerYaw)
+    private static RailShape getNewRailShape(World world, BlockPos pos, Direction cartDirection, float passengerYaw)
     {
         var routes = new ArrayList<Direction>();
         routes.add(Direction.NORTH);
@@ -148,14 +132,15 @@ public class SwitchRailBlock extends AbstractRailBlock
         routes.add(Direction.WEST);
 
         // can't turn backwards
-        routes.remove(minecartDirection.getOpposite());
+        routes.remove(cartDirection.getOpposite());
 
         for (int i = 3; i > 0; )
         {
             var direction = routes.get(--i);
 
-            var next = world.getBlockState(pos.offset(direction));
-            var down = world.getBlockState(pos.down());
+            var ahead = pos.offset(direction);
+            var next = world.getBlockState(ahead);
+            var down = world.getBlockState(ahead.down());
 
             // can't be derailed + can't turn to one-way switch pointing to them
             if (!(blockIsAnyRail(next) || blockIsAnyRail(down)) || isOppositeOneWaySwitch(next, direction))
@@ -165,20 +150,14 @@ public class SwitchRailBlock extends AbstractRailBlock
         }
 
         // go straight if there's nowhere to turn
-        if (routes.isEmpty()) return getRailShape(minecartDirection, minecartDirection);
+        if (routes.isEmpty()) return getRailShape(cartDirection, cartDirection);
 
         var angles = routes.stream().map(x -> angleDifference(passengerYaw, getDirectionYaw(x))).toList();
 
-        for (int i = 0; i < routes.size(); i++)
-        {
-            System.out.println(routes.get(i) + " - " + angles.get(i));
-        }
+        var smallest = Collections.min(angles);
+        var route = routes.get(angles.indexOf(smallest));
 
-        var closest = angles.stream().min(Float::compareTo);
-        var index = closest.map(angles::indexOf).orElse(0);
-        var route = routes.get(index);
-
-        return getRailShape(minecartDirection, route);
+        return getRailShape(cartDirection, route);
     }
 
     private static boolean blockIsAnyRail(BlockState blockState)
@@ -189,7 +168,7 @@ public class SwitchRailBlock extends AbstractRailBlock
     private static boolean isOppositeOneWaySwitch(BlockState rail, Direction turn)
     {
         var isSwitchRail = rail.getBlock() instanceof SwitchRailBlock;
-        return isSwitchRail && isOneWaySwitch(rail) && getOneWaySwitchDirection(rail) == turn.getOpposite();
+        return isSwitchRail && isOneWaySwitch(rail) && rail.get(FACING) == turn.getOpposite();
     }
 
     private static float getDirectionYaw(Direction direction)
@@ -229,6 +208,11 @@ public class SwitchRailBlock extends AbstractRailBlock
     private static boolean isNorthOrSouth(Direction direction)
     {
         return direction == Direction.NORTH || direction == Direction.SOUTH;
+    }
+
+    private static boolean isEastOrWest(Direction direction)
+    {
+        return direction == Direction.EAST || direction == Direction.WEST;
     }
 
     // REAL TRAP SHIT
