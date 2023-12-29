@@ -7,7 +7,6 @@ import only.in.ohio.block.ModBlocks;
 
 public class ModClient implements ClientModInitializer
 {
-
     @Override
     public void onInitializeClient()
     {
