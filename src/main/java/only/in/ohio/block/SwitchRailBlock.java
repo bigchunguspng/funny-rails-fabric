@@ -2,18 +2,24 @@ package only.in.ohio.block;
 
 import net.minecraft.block.*;
 import net.minecraft.block.enums.RailShape;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.state.property.EnumProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.state.property.Property;
+import net.minecraft.tag.BlockTags;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
+import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Objects;
 
 public class SwitchRailBlock extends AbstractRailBlock
@@ -65,7 +71,160 @@ public class SwitchRailBlock extends AbstractRailBlock
 
     // INTERACTION LOGIC
 
+    public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity)
+    {
+        if (world.isClient) return;
 
+        //System.out.println("onEntityCollision");
+        if (entity.getType() != EntityType.MINECART) return;
+
+        var passengers = entity.getPassengerList();
+        if (passengers.isEmpty()) return;
+
+        var passenger = passengers.get(0);
+
+        var rails = world.getBlockState(pos);
+
+        var isTwoWay = /*        */ isTwoWaySwitch(rails);
+        var isOneWay = !isTwoWay && isOneWaySwitch(rails);
+
+        if (isTwoWay || isOneWay)
+        {
+            var direction = getCartDirection(entity.getVelocity());
+
+            // one-way switch can only shape rails in front of it
+            if (isOneWay && getOneWaySwitchDirection(rails) == direction.getOpposite()) return;
+
+            var pos2 = pos.offset(direction);
+            var next = world.getBlockState(pos2);
+            if (next.getBlock() != Blocks.RAIL) return;
+
+            // ascending tracks can't be switched
+            if (RailIsAscending(next)) return;
+
+            var yaw = passenger.getHeadYaw();
+            System.out.println("pos2: " + pos2 + ", cart going " + direction);
+            var shape = getRailShape(world, pos2, direction, yaw);
+
+            world.setBlockState(pos2, next.with(Properties.RAIL_SHAPE, shape), 3);
+        }
+    }
+
+    private static boolean isTwoWaySwitch(BlockState rail)
+    {
+        return rail.get(FACING) == Direction.UP;
+    }
+
+    private static boolean isOneWaySwitch(BlockState rail)
+    {
+        return rail.get(FACING) != Direction.UP;
+    }
+
+    private static Direction getOneWaySwitchDirection(BlockState rail)
+    {
+        return rail.get(FACING);
+    }
+
+    private static Direction getCartDirection(Vec3d speed)
+    {
+        if /**/ (speed.getX() != 0) return speed.getX() > 0 ? Direction.EAST : Direction.WEST;
+        else if (speed.getZ() != 0) return speed.getZ() > 0 ? Direction.SOUTH : Direction.NORTH;
+
+        else return Direction.UP;
+    }
+
+    private static boolean RailIsAscending(BlockState rail)
+    {
+        var s = rail.get(Properties.RAIL_SHAPE);
+        return s == RailShape.ASCENDING_EAST || s == RailShape.ASCENDING_WEST || s == RailShape.ASCENDING_NORTH || s == RailShape.ASCENDING_SOUTH;
+    }
+
+    private static RailShape getRailShape(World world, BlockPos pos, Direction minecartDirection, float passengerYaw)
+    {
+        var routes = new ArrayList<Direction>();
+        routes.add(Direction.NORTH);
+        routes.add(Direction.EAST);
+        routes.add(Direction.SOUTH);
+        routes.add(Direction.WEST);
+
+        // can't turn backwards
+        routes.remove(minecartDirection.getOpposite());
+
+        for (int i = 3; i > 0; )
+        {
+            var direction = routes.get(--i);
+
+            var next = world.getBlockState(pos.offset(direction));
+            var down = world.getBlockState(pos.down());
+
+            // can't be derailed + can't turn to one-way switch pointing to them
+            if (!(blockIsAnyRail(next) || blockIsAnyRail(down)) || isOppositeOneWaySwitch(next, direction))
+            {
+                routes.remove(i);
+            }
+        }
+
+        // go straight if there's nowhere to turn
+        if (routes.isEmpty()) return getRailShape(minecartDirection, minecartDirection);
+
+        var angles = routes.stream().map(x -> angleDifference(passengerYaw, getDirectionYaw(x))).toList();
+
+        for (int i = 0; i < routes.size(); i++)
+        {
+            System.out.println(routes.get(i) + " - " + angles.get(i));
+        }
+
+        var closest = angles.stream().min(Float::compareTo);
+        var index = closest.map(angles::indexOf).orElse(0);
+        var route = routes.get(index);
+
+        return getRailShape(minecartDirection, route);
+    }
+
+    private static boolean blockIsAnyRail(BlockState blockState)
+    {
+        return BlockTags.RAILS.contains(blockState.getBlock());
+    }
+
+    private static boolean isOppositeOneWaySwitch(BlockState rail, Direction turn)
+    {
+        var isSwitchRail = rail.getBlock() instanceof SwitchRailBlock;
+        return isSwitchRail && isOneWaySwitch(rail) && getOneWaySwitchDirection(rail) == turn.getOpposite();
+    }
+
+    private static float getDirectionYaw(Direction direction)
+    {
+        return switch (direction)
+        {
+            case EAST -> -90;
+            case SOUTH -> 0;
+            case WEST -> 90;
+            default -> 180;
+        };
+    }
+
+    private static float angleDifference(float yaw1, float yaw2)
+    {
+        var abs = Math.abs(yaw1 - yaw2);
+        return abs > 180 ? 360 - abs : abs;
+    }
+
+    private static RailShape getRailShape(Direction straight, Direction turn)
+    {
+        var ns = isNorthOrSouth(straight);
+
+        if (straight == turn) return ns ? RailShape.NORTH_SOUTH : RailShape.EAST_WEST;
+
+        var a = straight.getOpposite().name();
+        var b = turn.name();
+
+        return RailShape.valueOf(MessageFormat.format(ns ? "{0}_{1}" : "{1}_{0}", a, b));
+    }
+
+    private static boolean isNorthOrSouth(Direction direction)
+    {
+        return direction == Direction.NORTH || direction == Direction.SOUTH;
+    }
 
     // REAL TRAP SHIT
 
