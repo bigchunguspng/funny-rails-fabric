@@ -196,17 +196,22 @@ public class SwitchRailBlock extends AbstractRailBlock
     {
         return switch (direction)
         {
-            case EAST -> -90;
             case SOUTH -> 0;
             case WEST -> 90;
-            default -> 180;
+            case NORTH -> 180;
+            default -> 270;
         };
     }
 
     private static float angleDifference(float yaw1, float yaw2)
     {
-        var abs = Math.abs(yaw1 - yaw2);
+        var abs = Math.abs(PositiveAngle(yaw1) - PositiveAngle(yaw2));
         return abs > 180 ? 360 - abs : abs;
+    }
+
+    private static float PositiveAngle(float x)
+    {
+        return (x + 3600) % 360;
     }
 
     private static RailShape getRailShape(Direction straight, Direction turn)
